@@ -2768,12 +2768,12 @@
 //
 // Ender-3 v2 OEM display. A DWIN display with Rotary Encoder.
 //
-#define DWIN_CREALITY_LCD
+//#define DWIN_CREALITY_LCD
 
 //
 // Ender-3 v2 OEM display, enhanced.
 //
-//#define DWIN_CREALITY_LCD_ENHANCED
+#define DWIN_CREALITY_LCD_ENHANCED
 
 //
 // Ender-3 v2 OEM display with enhancements by Jacob Myers
