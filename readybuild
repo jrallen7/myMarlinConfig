@@ -4,4 +4,4 @@ rm -rf ~/Marlin/Marlin/.pio
 
 cp Configuration* ../Marlin/Marlin/
 
-sed -i 's/default_envs = mega2560/default_envs = STM32F103RET6_creality/' ../Marlin/platformio.ini
+#sed -i 's/default_envs = mega2560/default_envs = STM32F103RET6_creality/' ../Marlin/platformio.ini
