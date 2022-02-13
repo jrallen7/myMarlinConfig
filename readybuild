@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 
-rm -rf ~/Marlin/Marlin/.pio
+#rm -rf ~/Marlin/Marlin/.pio
 
 cp Configuration* ../Marlin/Marlin/
 
