@@ -2,8 +2,8 @@
 
 #rm -rf ~/Marlin/Marlin/.pio
 
-cp Configuration* ../Marlin/Marlin/
+cp MarlinConfig/Configuration* ../Marlin/Marlin/
 
 #sed -i 's/default_envs = mega2560/default_envs = STM32F103RET6_creality/' ../Marlin/platformio.ini
 
-diff DWIN_SET/ ../config_github/DWIN_SET/ && echo "DWIN data unchanged"
+diff MarlinConfig/DWIN_SET/ ../Configurations/config/examples/Creality/Ender-3\ V2/DWIN_SET/ && echo "DWIN data unchanged"
