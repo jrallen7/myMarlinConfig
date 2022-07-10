@@ -986,8 +986,12 @@
 #if ENABLED(ASSISTED_TRAMMING)
 
   // Define positions for probe points.
-  //#define TRAMMING_POINT_XY { {  52, 52 }, { 220-52,  52 }, { 220-52, 220-52 }, { 52, 220-52 } }
-  #define TRAMMING_POINT_XY { { 52, 220-52 }, { 52, 52 }, { 220-52, 52 }, { 220-52, 220-52 } }
+//  #define TRAMMING_POINT_XY { { 52, 220-52 }, { 52, 52 }, { 210-52, 52 }, { 210-52, 220-52 } }
+  #define JRA_TRAM_INSET 52
+  #define TRAMMING_POINT_XY { { JRA_TRAM_INSET, Y_BED_SIZE-JRA_TRAM_INSET },
+	  { JRA_TRAM_INSET, JRA_TRAM_INSET },
+	  { X_BED_SIZE-JRA_TRAM_INSET, JRA_TRAM_INSET },
+	  { X_BED_SIZE-JRA_TRAM_INSET, Y_BED_SIZE-JRA_TRAM_INSET } }
 
   // Define position names for probe points.
   #define TRAMMING_POINT_NAME_1 "Back-Left"
