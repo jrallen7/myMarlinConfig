@@ -89,8 +89,11 @@
 
 // Choose the name from boards.h that matches your setup
 #ifndef MOTHERBOARD
-  #define MOTHERBOARD BOARD_CREALITY_V4
+  #define MOTHERBOARD BOARD_CREALITY_V422
 #endif
+
+#define NO_CREALITY_V422_DRIVER_WARNING
+#define NO_AUTO_ASSIGN_WARNING
 
 /**
  * Select the serial port on the board to use for communication with the host.
