@@ -205,7 +205,7 @@
 //
 #if DISABLED(PIDTEMPBED)
   #define BED_CHECK_INTERVAL 5000   // (ms) Interval between checks in bang-bang control
-  #if ENABLED(BED_LIMIT_SWITCHING)
+  #if ANY(BED_LIMIT_SWITCHING, PELTIER_BED)
     #define BED_HYSTERESIS 2        // (°C) Only set the relevant heater state when ABS(T-target) > BED_HYSTERESIS
   #endif
 #endif
@@ -592,6 +592,8 @@
 
   // Use TEMP_SENSOR_SOC as a trigger for enabling the controller fan
   //#define CONTROLLER_FAN_MIN_SOC_TEMP 40  // (°C) Turn on the fan if the SoC reaches this temperature
+
+  #define CONTROLLER_FAN_BED_HEATING        // Turn on the fan when heating the bed
 
   //#define CONTROLLER_FAN_EDITABLE         // Enable M710 configurable settings
   #if ENABLED(CONTROLLER_FAN_EDITABLE)
@@ -1084,9 +1086,11 @@
   #define HOME_AFTER_G34
 #endif
 
-//
-// Add the G35 command to read bed corners to help adjust screws. Requires a bed probe.
-//
+/**
+ * Assisted Tramming
+ *
+ * Add the G35 command to measure bed corners and help adjust screws. Requires a bed probe.
+ */
 #define ASSISTED_TRAMMING
 #if ENABLED(ASSISTED_TRAMMING)
 
@@ -1112,19 +1116,22 @@
   //#define ASSISTED_TRAMMING_WAIT_POSITION { X_CENTER, Y_CENTER, 30 } // Move the nozzle out of the way for adjustment
 
   /**
-   * Screw thread:
-   *   M3: 30 = Clockwise, 31 = Counter-Clockwise
-   *   M4: 40 = Clockwise, 41 = Counter-Clockwise
-   *   M5: 50 = Clockwise, 51 = Counter-Clockwise
+   * Screw Thread. Use one of the following defines:
+   *
+   *   M3_CW = M3 Clockwise, M3_CCW = M3 Counter-Clockwise
+   *   M4_CW = M4 Clockwise, M4_CCW = M4 Counter-Clockwise
+   *   M5_CW = M5 Clockwise, M5_CCW = M5 Counter-Clockwise
+   *
+   * :{'M3_CW':'M3 Clockwise','M3_CCW':'M3 Counter-Clockwise','M4_CW':'M4 Clockwise','M4_CCW':'M4 Counter-Clockwise','M5_CW':'M5 Clockwise','M5_CCW':'M5 Counter-Clockwise'}
    */
-  #define TRAMMING_SCREW_THREAD 30
+  #define TRAMMING_SCREW_THREAD M4_CW
 
 #endif
 
 // @section motion control
 
 /**
- * Fixed-time-based Motion Control -- EXPERIMENTAL
+ * Fixed-time-based Motion Control -- BETA FEATURE
  * Enable/disable and set parameters with G-code M493.
  * See ft_types.h for named values used by FTM options.
  */
@@ -1137,7 +1144,7 @@
   #define FTM_SHAPING_DEFAULT_FREQ_X   37.0f      // (Hz) Default peak frequency used by input shapers
   #define FTM_SHAPING_DEFAULT_FREQ_Y   37.0f      // (Hz) Default peak frequency used by input shapers
   #define FTM_LINEAR_ADV_DEFAULT_ENA   false      // Default linear advance enable (true) or disable (false)
-  #define FTM_LINEAR_ADV_DEFAULT_K      0         // Default linear advance gain, integer value. (Acceleration-based scaling factor.)
+  #define FTM_LINEAR_ADV_DEFAULT_K      0.0f      // Default linear advance gain. (Acceleration-based scaling factor.)
   #define FTM_SHAPING_ZETA_X            0.1f      // Zeta used by input shapers for X axis
   #define FTM_SHAPING_ZETA_Y            0.1f      // Zeta used by input shapers for Y axis
 
@@ -1188,7 +1195,7 @@
 #endif
 
 /**
- * Input Shaping -- EXPERIMENTAL
+ * Input Shaping
  *
  * Zero Vibration (ZV) Input Shaping for X and/or Y movements.
  *
@@ -1260,12 +1267,8 @@
 #define DISABLE_IDLE_E    // Shut down all idle extruders
 
 // Default Minimum Feedrates for printing and travel moves
-#define DEFAULT_MINIMUMFEEDRATE             0.0     // (mm/s) Minimum feedrate. Set with M205 S.
-#define DEFAULT_MINTRAVELFEEDRATE           0.0     // (mm/s) Minimum travel feedrate. Set with M205 T.
-#if HAS_ROTATIONAL_AXES
-  #define DEFAULT_ANGULAR_MINIMUMFEEDRATE   0.0     // (°/s) Minimum feedrate for rotational-only moves. Set with M205 P.
-  #define DEFAULT_ANGULAR_MINTRAVELFEEDRATE 0.0     // (°/s) Minimum travel feedrate for rotational-only moves. Set with M205 Q.
-#endif
+#define DEFAULT_MINIMUMFEEDRATE       0.0     // (mm/s) Minimum feedrate. Set with M205 S.
+#define DEFAULT_MINTRAVELFEEDRATE     0.0     // (mm/s) Minimum travel feedrate. Set with M205 T.
 
 // Minimum time that a segment needs to take as the buffer gets emptied
 #define DEFAULT_MINSEGMENTTIME        20000   // (µs) Set with M205 B.
@@ -1502,8 +1505,17 @@
   #define FEEDRATE_CHANGE_BEEP_FREQUENCY 440
 #endif
 
+/**
+ * Probe Offset Wizard
+ * Add a Probe Z Offset calibration option to the LCD menu.
+ * Use this helper to get a perfect 'M851 Z' probe offset.
+ * When launched this powerful wizard:
+ *  - Measures the bed height at the configured position with the probe.
+ *  - Moves the nozzle to the same position for a "paper" measurement.
+ *  - The difference is used to set the probe Z offset.
+ */
 #if HAS_BED_PROBE && ANY(HAS_MARLINUI_MENU, HAS_TFT_LVGL_UI)
-  //#define PROBE_OFFSET_WIZARD       // Add a Probe Z Offset calibration option to the LCD menu
+  //#define PROBE_OFFSET_WIZARD
   #if ENABLED(PROBE_OFFSET_WIZARD)
     /**
      * Enable to init the Probe Z-Offset when starting the Wizard.
@@ -1520,6 +1532,10 @@
 #if HAS_MARLINUI_MENU
 
   #if HAS_BED_PROBE
+
+    // Show Deploy / Stow Probe options in the Motion menu.
+    #define PROBE_DEPLOY_STOW_MENU
+
     // Add calibration in the Probe Offsets menu to compensate for X-axis twist.
     //#define X_AXIS_TWIST_COMPENSATION
     #if ENABLED(X_AXIS_TWIST_COMPENSATION)
@@ -1534,8 +1550,6 @@
       #define XATC_Z_OFFSETS { 0, 0, 0 }    // Z offsets for X axis sample points
     #endif
 
-    // Show Deploy / Stow Probe options in the Motion menu.
-    #define PROBE_DEPLOY_STOW_MENU
   #endif
 
   // Include a page of printer information in the LCD Main Menu
@@ -2303,12 +2317,8 @@
   //#define BABYSTEP_DISPLAY_TOTAL          // Display total babysteps since last G28
 
   //#define BABYSTEP_ZPROBE_OFFSET          // Combine M851 Z and Babystepping
-  //#define BABYSTEP_GLOBAL_Z               // Combine M424 Z and Babystepping
-
-  #if ANY(BABYSTEP_ZPROBE_OFFSET, BABYSTEP_GLOBAL_Z)
-    #if ENABLED(BABYSTEP_ZPROBE_OFFSET)
-      //#define BABYSTEP_HOTEND_Z_OFFSET    // For multiple hotends, babystep relative Z offsets
-    #endif
+  #if ENABLED(BABYSTEP_ZPROBE_OFFSET)
+    //#define BABYSTEP_HOTEND_Z_OFFSET      // For multiple hotends, babystep relative Z offsets
     //#define BABYSTEP_GFX_OVERLAY          // Enable graphical overlay on Z-offset editor
   #endif
 #endif
@@ -2576,7 +2586,7 @@
 
 /**
  * Minimum stepper driver pulse width (in ns)
- * If undefined, these defaults (from Conditionals_adv.h) apply:
+ * If undefined, these defaults (from Conditionals-4-adv.h) apply:
  *     100 : Minimum for TMC2xxx stepper drivers
  *     500 : Minimum for LV8729
  *    1000 : Minimum for A4988 and A5984 stepper drivers
@@ -2590,7 +2600,7 @@
 
 /**
  * Maximum stepping rate (in Hz) the stepper driver allows
- * If undefined, these defaults (from Conditionals_adv.h) apply:
+ * If undefined, these defaults (from Conditionals-4-adv.h) apply:
  *  5000000 : Maximum for TMC2xxx stepper drivers
  *  1000000 : Maximum for LV8729 stepper driver
  *   500000 : Maximum for A4988 stepper driver
@@ -2724,7 +2734,7 @@
 
 /**
  * Set the number of proportional font spaces required to fill up a typical character space.
- * This can help to better align the output of commands like `G29 O` Mesh Output.
+ * This can help to better align the output of commands like 'G29 O' Mesh Output.
  *
  * For clients that use a fixed-width font (like OctoPrint), leave this set to 1.0.
  * Otherwise, adjust according to your client and font.
@@ -2935,7 +2945,7 @@
   #define ADVANCED_PAUSE_FANS_PAUSE               // Turn off print-cooling fans while the machine is paused.
 
                                                   // Filament Unload does a Retract, Delay, and Purge first:
-  #define FILAMENT_UNLOAD_PURGE_RETRACT       13   // (mm) Unload initial retract length.
+  #define FILAMENT_UNLOAD_PURGE_RETRACT       13  // (mm) Unload initial retract length.
   #define FILAMENT_UNLOAD_PURGE_DELAY       5000  // (ms) Delay for the filament to cool after retract.
   #define FILAMENT_UNLOAD_PURGE_LENGTH         8  // (mm) An unretract is done, then this length is purged.
   #define FILAMENT_UNLOAD_PURGE_FEEDRATE      25  // (mm/s) feedrate to purge before unload
@@ -2946,10 +2956,10 @@
   //#define FILAMENT_CHANGE_RESUME_ON_INSERT      // Automatically continue / load filament when runout sensor is triggered again.
   //#define PAUSE_REHEAT_FAST_RESUME              // Reduce number of waits by not prompting again post-timeout before continuing.
 
-  #define PARK_HEAD_ON_PAUSE                    // Park the nozzle during pause and filament change.
+  #define PARK_HEAD_ON_PAUSE                      // Park the nozzle during pause and filament change.
   //#define HOME_BEFORE_FILAMENT_CHANGE           // If needed, home before parking for filament change
 
-  #define FILAMENT_LOAD_UNLOAD_GCODES           // Add M701/M702 Load/Unload G-codes, plus Load/Unload in the LCD Prepare menu.
+  #define FILAMENT_LOAD_UNLOAD_GCODES             // Add M701/M702 Load/Unload G-codes, plus Load/Unload in the LCD Prepare menu.
   //#define FILAMENT_UNLOAD_ALL_EXTRUDERS         // Allow M702 to unload all extruders above a minimum target temp (as set by M302)
   #define CONFIGURE_FILAMENT_CHANGE               // Add M603 G-code and menu items. Requires ~1.3K bytes of flash.
 #endif
@@ -3862,14 +3872,6 @@
  */
 //#define CNC_COORDINATE_SYSTEMS
 
-/**
- * CNC Drilling Cycle - UNDER DEVELOPMENT
- *
- * Enables G81 to perform a drilling cycle.
- * Currently only supports a single cycle, no G-code chaining.
- */
-//#define CNC_DRILLING_CYCLE
-
 // @section security
 
 /**
@@ -3968,15 +3970,6 @@
 #endif
 
 /**
- * Variables
- *
- * Define a variable from 100-115 with G-code like '#101=19.6'.
- * A variable can then be used in a G-code expression like 'G0 X[#101+3]'.
- * See https://gcodetutor.com/cnc-macro-programming/cnc-variables.html
- */
-//#define GCODE_VARIABLES
-
-/**
  * Support for MeatPack G-code compression (https://github.com/scottmudge/OctoPrint-MeatPack)
  */
 //#define MEATPACK_ON_SERIAL_PORT_1
@@ -4018,7 +4011,6 @@
 #ifdef G0_FEEDRATE
   //#define VARIABLE_G0_FEEDRATE // The G0 feedrate is set by F in G0 motion mode
 #endif
-//#define G0_ANGULAR_FEEDRATE 2700 // (°/min)
 
 /**
  * Startup commands
@@ -4159,10 +4151,10 @@
  */
 #define HOST_ACTION_COMMANDS
 #if ENABLED(HOST_ACTION_COMMANDS)
-  #define HOST_PAUSE_M76                // Tell the host to pause in response to M76
-  #define HOST_PROMPT_SUPPORT           // Initiate host prompts to get user feedback
+  #define HOST_PAUSE_M76                  // Tell the host to pause in response to M76
+  #define HOST_PROMPT_SUPPORT             // Initiate host prompts to get user feedback
   #if ENABLED(HOST_PROMPT_SUPPORT)
-    #define HOST_STATUS_NOTIFICATIONS   // Send some status messages to the host as notifications
+    #define HOST_STATUS_NOTIFICATIONS     // Send some status messages to the host as notifications
   #endif
   //#define HOST_START_MENU_ITEM          // Add a menu item that tells the host to start
   //#define HOST_SHUTDOWN_MENU_ITEM       // Add a menu item that tells the host to shut down
@@ -4423,58 +4415,81 @@
   //#define E_MUX0_PIN 40  // Always Required
   //#define E_MUX1_PIN 42  // Needed for 3 to 8 inputs
   //#define E_MUX2_PIN 44  // Needed for 5 to 8 inputs
-#elif HAS_PRUSA_MMU2
-  // Serial port used for communication with MMU2.
-  #define MMU2_SERIAL_PORT 2
 
-  // Use hardware reset for MMU if a pin is defined for it
-  //#define MMU2_RST_PIN 23
+#elif HAS_PRUSA_MMU2 || HAS_PRUSA_MMU3
+  // Common settings for MMU2/MMU2S/MMU3
+  // Serial port used for communication with MMU2/MMU2S/MMU3.
+  #define MMU_SERIAL_PORT 2
+  #define MMU_BAUD 115200
 
-  // Enable if the MMU2 has 12V stepper motors (MMU2 Firmware 1.0.2 and up)
-  //#define MMU2_MODE_12V
+  //#define MMU_RST_PIN 23    // Define this pin to use Hardware Reset for MMU2/MMU2S/MMU3
 
-  // G-code to execute when MMU2 F.I.N.D.A. probe detects filament runout
-  #define MMU2_FILAMENT_RUNOUT_SCRIPT "M600"
+  //#define MMU_MENUS         // Add an LCD menu for MMU2/MMU2S/MMU3
 
-  // Add an LCD menu for MMU2
-  //#define MMU2_MENUS
+  //#define MMU_DEBUG         // Write debug info to serial output
 
-  // Settings for filament load / unload from the LCD menu.
-  // This is for Průša MK3-style extruders. Customize for your hardware.
-  #define MMU2_FILAMENTCHANGE_EJECT_FEED 80.0
-  #define MMU2_LOAD_TO_NOZZLE_SEQUENCE \
-    {  7.2, 1145 }, \
-    { 14.4,  871 }, \
-    { 36.0, 1393 }, \
-    { 14.4,  871 }, \
-    { 50.0,  198 }
+  // Options pertaining to MMU2 and MMU2S
+  #if HAS_PRUSA_MMU2
+    // Enable if the MMU2 has 12V stepper motors (MMU2 Firmware 1.0.2 and up)
+    //#define MMU2_MODE_12V
 
-  #define MMU2_RAMMING_SEQUENCE \
-    {   1.0, 1000 }, \
-    {   1.0, 1500 }, \
-    {   2.0, 2000 }, \
-    {   1.5, 3000 }, \
-    {   2.5, 4000 }, \
-    { -15.0, 5000 }, \
-    { -14.0, 1200 }, \
-    {  -6.0,  600 }, \
-    {  10.0,  700 }, \
-    { -10.0,  400 }, \
-    { -50.0, 2000 }
+    // Settings for filament load / unload from the LCD menu.
+    // This is for Průša MK3-style extruders. Customize for your hardware.
+    #define MMU2_FILAMENTCHANGE_EJECT_FEED 80.0
+
+    // G-code to execute when MMU2 F.I.N.D.A. probe detects filament runout
+    #define MMU2_FILAMENT_RUNOUT_SCRIPT "M600"
+
+    // MMU2 sequences use mm/min. Not compatible with MMU3, which use mm/sec.
+    #define MMU2_LOAD_TO_NOZZLE_SEQUENCE \
+      {  4.4,  871 }, \
+      { 10.0, 1393 }, \
+      {  4.4,  871 }, \
+      { 10.0,  198 }
+
+    #define MMU2_RAMMING_SEQUENCE \
+      {   1.0, 1000 }, \
+      {   1.0, 1500 }, \
+      {   2.0, 2000 }, \
+      {   1.5, 3000 }, \
+      {   2.5, 4000 }, \
+      { -15.0, 5000 }, \
+      { -14.0, 1200 }, \
+      {  -6.0,  600 }, \
+      {  10.0,  700 }, \
+      { -10.0,  400 }, \
+      { -50.0, 2000 }
+
+  #endif // HAS_PRUSA_MMU2
 
   /**
-   * Using a sensor like the MMU2S
-   * This mode requires a MK3S extruder with a sensor at the extruder idler, like the MMU2S.
+   * Options pertaining to MMU2S devices
+   * Requires the MK3S extruder with a sensor at the extruder idler, like the MMU2S.
    * See https://help.prusa3d.com/guide/3b-mk3s-mk2-5s-extruder-upgrade_41560#42048, step 11
    */
   #if HAS_PRUSA_MMU2S
     #define MMU2_C0_RETRY   5             // Number of retries (total time = timeout*retries)
 
+    /**
+     * This is called after the filament runout sensor is triggered to check if
+     * the filament has been loaded properly by moving the filament back and
+     * forth to see if the filament runout sensor is going to get triggered
+     * again, which should not occur if the filament is properly loaded.
+     *
+     * Thus, the MMU2_CAN_LOAD_SEQUENCE should contain some forward and
+     * backward moves. The forward moves should be greater than the backward
+     * moves.
+     *
+     * This is useless if your filament runout sensor is way behind the gears.
+     * In that case use {0, MMU2_CAN_LOAD_FEEDRATE}
+     *
+     * Adjust MMU2_CAN_LOAD_SEQUENCE according to your setup.
+     */
     #define MMU2_CAN_LOAD_FEEDRATE 800    // (mm/min)
     #define MMU2_CAN_LOAD_SEQUENCE \
-      {  0.1, MMU2_CAN_LOAD_FEEDRATE }, \
-      {  60.0, MMU2_CAN_LOAD_FEEDRATE }, \
-      { -52.0, MMU2_CAN_LOAD_FEEDRATE }
+      {   5.0, MMU2_CAN_LOAD_FEEDRATE }, \
+      {  15.0, MMU2_CAN_LOAD_FEEDRATE }, \
+      { -10.0, MMU2_CAN_LOAD_FEEDRATE }
 
     #define MMU2_CAN_LOAD_RETRACT   6.0   // (mm) Keep under the distance between Load Sequence values
     #define MMU2_CAN_LOAD_DEVIATION 0.8   // (mm) Acceptable deviation
@@ -4485,10 +4500,90 @@
 
     // Continue unloading if sensor detects filament after the initial unload move
     //#define MMU_IR_UNLOAD_MOVE
-  #else
+
+  #elif HAS_PRUSA_MMU3
+
+    // MMU3 settings
+
+    #define MMU3_HAS_CUTTER     // Enable cutter related functionality
+
+    #define MMU3_MAX_RETRIES 3  // Number of retries (total time = timeout*retries)
+
+    // As discussed with our PrusaSlicer profile specialist
+    // - ToolChange shall not try to push filament into the very tip of the nozzle
+    // to have some space for additional G-code to tune the extruded filament length
+    // in the profile
+    // Beware - this value is used to initialize the MMU logic layer - it will be sent to the MMU upon line up (written into its 8bit register 0x0b)
+    // However - in the G-code we can get a request to set the extra load distance at runtime to something else (M708 A0xb Xsomething).
+    // The printer intercepts such a call and sets its extra load distance to match the new value as well.
+    #define MMU3_FILAMENT_SENSOR_E_POSITION  0   // (mm)
+    #define _MMU3_LOAD_DISTANCE_PAST_GEARS   5   // (mm)
+    #define MMU3_TOOL_CHANGE_LOAD_LENGTH (MMU3_FILAMENT_SENSOR_E_POSITION + _MMU3_LOAD_DISTANCE_PAST_GEARS) // (mm)
+
+    #define MMU3_LOAD_TO_NOZZLE_FEED_RATE        20.0 // (mm/s)
+
+    #define MMU3_VERIFY_LOAD_TO_NOZZLE_FEED_RATE 50.0 // (mm/s)
+    #define _MMU3_VERIFY_LOAD_TO_NOZZLE_TWEAK    -5.0 // (mm) Amount to adjust the length for verifying load-to-nozzle
+
+    // The first thing the MMU does is initialize its axis.
+    // Meanwhile the E-motor will unload 20mm of filament in about 1 second.
+    #define MMU3_RETRY_UNLOAD_TO_FINDA_LENGTH    80.0 // (mm)
+    #define MMU3_RETRY_UNLOAD_TO_FINDA_FEED_RATE 80.0 // (mm/s)
+
+    // After loading a new filament, the printer will extrude this length of filament
+    // then retract to the original position. This is used to check if the filament sensor
+    // reading flickers or filament is jammed.
+    #define _MMU_EXTRUDER_PTFE_LENGTH            42.3 // (mm)
+    #define _MMU_EXTRUDER_HEATBREAK_LENGTH       17.7 // (mm)
+    #define MMU3_CHECK_FILAMENT_PRESENCE_EXTRUSION_LENGTH (MMU3_FILAMENT_SENSOR_E_POSITION + _MMU_EXTRUDER_PTFE_LENGTH + _MMU_EXTRUDER_HEATBREAK_LENGTH + _MMU3_VERIFY_LOAD_TO_NOZZLE_TWEAK) // (mm)
 
     /**
-     * MMU1 Extruder Sensor
+     * SpoolJoin Consumes All Filament -- EXPERIMENTAL
+     *
+     * SpoolJoin normally triggers when FINDA sensor untriggers while printing.
+     * This is the default behaviour and it doesn't consume all the filament
+     * before triggering a filament change. This leaves some filament in the
+     * current slot and before switching to the next slot it is unloaded.
+     *
+     * Enabling this option will trigger the filament change when both FINDA
+     * and Filament Runout Sensor triggers during the print and it allows the
+     * filament in the current slot to be completely consumed before doing the
+     * filament change. But this can cause problems as a little bit of filament
+     * will be left between the extruder gears (thinking that the filament
+     * sensor is triggered through the gears) and the end of the PTFE tube and
+     * can cause filament load issues.
+     */
+    //#define MMU3_SPOOL_JOIN_CONSUMES_ALL_FILAMENT
+
+    // MMU3 sequences use mm/sec. Not compatible with MMU2 which use mm/min.
+    #define MMU3_LOAD_TO_NOZZLE_SEQUENCE \
+      { _MMU_EXTRUDER_PTFE_LENGTH,      MMM_TO_MMS(810) }, /* (13.5 mm/s) Fast load ahead of heatbreak */ \
+      { _MMU_EXTRUDER_HEATBREAK_LENGTH, MMM_TO_MMS(198) }  /* ( 3.3 mm/s) Slow load after heatbreak */
+
+    #define MMU3_RAMMING_SEQUENCE \
+      { 0.2816,  MMM_TO_MMS(1339.0) }, \
+      { 0.3051,  MMM_TO_MMS(1451.0) }, \
+      { 0.3453,  MMM_TO_MMS(1642.0) }, \
+      { 0.3990,  MMM_TO_MMS(1897.0) }, \
+      { 0.4761,  MMM_TO_MMS(2264.0) }, \
+      { 0.5767,  MMM_TO_MMS(2742.0) }, \
+      { 0.5691,  MMM_TO_MMS(3220.0) }, \
+      { 0.1081,  MMM_TO_MMS(3220.0) }, \
+      { 0.7644,  MMM_TO_MMS(3635.0) }, \
+      { 0.8248,  MMM_TO_MMS(3921.0) }, \
+      { 0.8483,  MMM_TO_MMS(4033.0) }, \
+      { -15.0,   MMM_TO_MMS(6000.0) }, \
+      { -24.5,   MMM_TO_MMS(1200.0) }, \
+      {  -7.0,   MMM_TO_MMS( 600.0) }, \
+      {  -3.5,   MMM_TO_MMS( 360.0) }, \
+      {  20.0,   MMM_TO_MMS( 454.0) }, \
+      { -20.0,   MMM_TO_MMS( 303.0) }, \
+      { -35.0,   MMM_TO_MMS(2000.0) }
+
+  #else // MMU2 (not MMU2S)
+
+    /**
+     * MMU2 Extruder Sensor
      *
      * Support for a Průša (or other) IR Sensor to detect filament near the extruder
      * and make loading more reliable. Suitable for an extruder equipped with a filament
@@ -4498,16 +4593,14 @@
      * move up to the gears. If no filament is detected, the MMU2 can make some more attempts.
      * If all attempts fail, a filament runout will be triggered.
      */
-    //#define MMU_EXTRUDER_SENSOR
-    #if ENABLED(MMU_EXTRUDER_SENSOR)
-      #define MMU_LOADING_ATTEMPTS_NR 5 // max. number of attempts to load filament if first load fail
+    //#define MMU2_EXTRUDER_SENSOR
+    #if ENABLED(MMU2_EXTRUDER_SENSOR)
+      #define MMU2_LOADING_ATTEMPTS_NR 5  // Number of times to try loading filament before failure
     #endif
 
   #endif
 
-  //#define MMU2_DEBUG  // Write debug info to serial output
-
-#endif // HAS_PRUSA_MMU2
+#endif // HAS_PRUSA_MMU2 || HAS_PRUSA_MMU3
 
 /**
  * Advanced Print Counter settings
